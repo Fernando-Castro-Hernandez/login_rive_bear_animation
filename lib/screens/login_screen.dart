@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rive/rive.dart';
+import 'dart:async'; //Importar el timer
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,6 +20,37 @@ class _LoginScreenState extends State<LoginScreen> {
   SMITrigger? _trigSuccsess;
   SMITrigger? _trigFail;
   SMINumber? _numLock;
+
+  //Timer para recorrer el recorrido de la mirada
+  Timer? _typingDebounce;
+
+
+  //2.1 Crear variables FocusNode
+  final _emailFocus = FocusNode();
+  final _passwordFocus = FocusNode();
+
+  @override
+  void initState() {
+
+    super.initState();
+
+    _emailFocus.addListener(() {
+      if (_emailFocus.hasFocus) {
+        if (_isHandsUp != null) {
+        _isHandsUp?.change(false);
+        //3.3 Mirada neutral
+        _numLock?.value = 50;
+       }
+      }
+      
+    });
+
+    _passwordFocus.addListener(() {
+      _isHandsUp?.change(_passwordFocus.hasFocus);
+    });    
+  }
+
+  
   
   @override
   Widget build(BuildContext context) {
@@ -60,17 +92,34 @@ class _LoginScreenState extends State<LoginScreen> {
                 //Email
                 
                 TextField(
+                  //2.3Asignar el focus al tect field
+                  focusNode: _emailFocus,
 
                   onChanged: (value){
                     if(_isHandsUp != null){
                       //No tapes los ojos al ver el email
-                      _isHandsUp!.change(false);
+                      //_isHandsUp!.change(false);
                     }
-
                     //Si isCheckimg es null
                     if (_isChecking == null) return;
                     //Activa modo chismoso
                     _isChecking!.change(true);
+                    //3.4 Implementar recorrido de la mirada. Se ajusta limites del 0 al 100. 
+                    //80 Medida de Calibración
+                    final look = (value.length / 80.0 * 100.0).clamp(0.0, 100.0);
+                    _numLock?.value = look;
+
+                    //3.5 Debpunce: Si vuelve a teclear, reinicia el contador
+                    _typingDebounce?.cancel();
+                    //Crear nuevo timer
+                    _typingDebounce = Timer(const Duration(seconds: 3), () {
+                      //Si se cierra la pantalla, se cierra la ejecucion
+                      if (!mounted) return;
+                      //Mirada neutra
+                      _isChecking?.change(false);
+                    });
+
+
                   },
                   decoration: InputDecoration(
                     hintText: "Email",
@@ -86,11 +135,13 @@ class _LoginScreenState extends State<LoginScreen> {
         
                 //Contraseña
                 TextField(
+                  //2.3Asignar el focus al tect field
+                  focusNode: _passwordFocus,
                   obscureText: _isObscure,
                   onChanged: (value){
                     if(_isChecking != null){
                       //No mires mientras escribe la contraseña
-                      _isChecking!.change(false);
+                      //isChecking!.change(false);
                     }
 
                     //Si isHandsUp es null
@@ -124,5 +175,12 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
+  }
+  @override
+  void dispose() {
+    //2.4 Liberar espacio en memoria en los Focuses Node
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
+    super.dispose();
   }
 }
