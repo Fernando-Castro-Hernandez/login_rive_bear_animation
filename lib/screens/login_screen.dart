@@ -19,7 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   SMIBool? _isHandsUp;
   SMITrigger? _trigSuccsess;
   SMITrigger? _trigFail;
-  SMINumber? _numLock;
+  SMINumber? _numLook;
 
   //Timer para recorrer el recorrido de la mirada
   Timer? _typingDebounce;
@@ -28,6 +28,62 @@ class _LoginScreenState extends State<LoginScreen> {
   //2.1 Crear variables FocusNode
   final _emailFocus = FocusNode();
   final _passwordFocus = FocusNode();
+
+  //4.1 Controllers para manipular lo que escribe el usuaario
+  final emailCtrl = TextEditingController();
+  final passCtrl = TextEditingController();
+
+  // 4.2 Errores para mostrar en la UI
+  String? emailError; 
+  String? passError; 
+
+   // 4.3 Validadores
+  bool isValidEmail(String email) {
+    final re = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+    return re.hasMatch(email);
+  }
+
+  bool isValidPassword(String pass) {
+    // mínimo 8, una mayúscula, una minúscula, un dígito y un especial
+    final re = RegExp(
+      r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$',
+    );
+    return re.hasMatch(pass);
+  }
+
+  //4.4 Accion del boton
+  void _onLogin (){
+    //Recortar espacios en blanco accidentales
+    final email = emailCtrl.text.trim();
+    final pass = passCtrl.text;
+
+    //recalcular Errores
+    final emailTypedError = isValidEmail(email) ? null : 'Invalid Email';
+    final passTypedError = isValidEmail(email) ? null : 'Invalid Password';
+
+    //4.5 Para mostrar el cambio
+    setState(() {
+      emailError = emailTypedError;
+      passError = passTypedError;
+    });  
+
+    //4.6 cerrar teclado y oso en forma neutral
+    FocusScope.of(context).unfocus();
+    _typingDebounce?.cancel();
+    _isChecking?.change(false);
+    _isHandsUp?.change(false);
+    _numLook?.value = 50.0;
+
+    //4.7 Activar Triggers
+    if (emailTypedError == null && passTypedError == null) {
+      _trigSuccsess?.fire();
+    } else {
+      _trigFail?.fire();
+    }
+
+
+  }
+
 
   @override
   void initState() {
@@ -39,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (_isHandsUp != null) {
         _isHandsUp?.change(false);
         //3.3 Mirada neutral
-        _numLock?.value = 50;
+        _numLook?.value = 50;
        }
       }
       
@@ -82,7 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       _isHandsUp = _controller!.findSMI('isHandsUp');
                       _trigSuccsess = _controller!.findSMI('trigSuccess');
                       _trigFail = _controller!.findSMI('trigFail');
-                      _numLock = _controller!.findSMI('numLook');
+                      _numLook = _controller!.findSMI('numLook');
                     },
                   ),
                 ),
@@ -92,6 +148,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 //Email
                 
                 TextField(
+                  //4.8 vincular el controller
+                  controller: emailCtrl,
                   //2.3Asignar el focus al tect field
                   focusNode: _emailFocus,
 
@@ -107,7 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     //3.4 Implementar recorrido de la mirada. Se ajusta limites del 0 al 100. 
                     //80 Medida de Calibración
                     final look = (value.length / 80.0 * 100.0).clamp(0.0, 100.0);
-                    _numLock?.value = look;
+                    _numLook?.value = look;
 
                     //3.5 Debpunce: Si vuelve a teclear, reinicia el contador
                     _typingDebounce?.cancel();
@@ -122,6 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   },
                   decoration: InputDecoration(
+                    errorText: emailError,
                     hintText: "Email",
                     prefixIcon: const Icon(Icons.email),
                     border: OutlineInputBorder(
@@ -150,6 +209,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     _isHandsUp!.change(true);
                   },
                   decoration: InputDecoration(
+                    errorText: passError,
                     hintText: "Password",
                     prefixIcon: const Icon(Icons.lock),
                     suffixIcon: IconButton(
@@ -169,6 +229,54 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: screenSize.width,
+                  child: const Text(
+                    "Forgotten Password",
+                    textAlign: TextAlign.right,
+                    style: TextStyle(decoration: TextDecoration.underline),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                MaterialButton(
+                  //Toma todo el ancho posible
+                  minWidth: screenSize.width,
+                  height: 50,
+                  color: Colors.pinkAccent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadiusGeometry.circular(12)
+                  ),
+                  onPressed: _onLogin,
+                  child: const Text(
+                    "Login",
+                    style: TextStyle(color: Colors.white, fontSize: 18),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: screenSize.width,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text("Don't have an account"),
+                      TextButton(
+                        onPressed: () {},
+                        child: const Text(
+                          "Register",
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                
+
               ],
             ),
           ),
